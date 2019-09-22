@@ -7,6 +7,7 @@ import isBoolean from 'lodash/isBoolean';
 import isNull from 'lodash/isNull';
 
 let idCount = 0;
+const getNewSchemaId: () => number = () => idCount++;
 
 export interface Item {
   id: number;
@@ -75,37 +76,28 @@ function detectScalarType (v: any): string | undefined {
 }
 
 export function detectSchema (json: any): SchemaItem {
-  const scalarType = detectScalarType(json);
   let item: SchemaItem;
-  if (scalarType) {
+  if (isArray(json)) {
     item = {
-      id: idCount++,
-      species: 'scalar',
-      type: scalarType,
+      id: getNewSchemaId(),
+      species: 'array',
+      items: json.map(detectSchema),
+    }
+  } else if (isPlainObject(json)) {
+    item = {
+      id: getNewSchemaId(),
+      species: 'object',
+      properties: Object.keys(json).map(key => ({
+        id: getNewSchemaId(),
+        key,
+        value: detectSchema(json[key])
+      })),
     }
   } else {
-    if (isArray(json)) {
-      item = {
-        id: idCount++,
-        species: 'array',
-        items: json.map(detectSchema),
-      }
-    } else if (isPlainObject(json)) {
-      item = {
-        id: idCount++,
-        species: 'object',
-        properties: Object.keys(json).map(key => ({
-          id: idCount++,
-          key,
-          value: detectSchema(json[key])
-        })),
-      }
-    } else {
-      item = {
-        id: idCount++,
-        species: 'scalar',
-        type: 'string',
-      }
+    item = {
+      id: getNewSchemaId(),
+      species: 'scalar',
+      type: detectScalarType(json) || 'string',
     }
   }
 
